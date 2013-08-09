@@ -36,7 +36,7 @@ func (pw *poolWorker) DoWork(poolreq poolRequest, free chan bool) {
 	free <- true
 }
 
-func poolManager(maxclients int, reqchan chan poolRequest) {
+func poolManager(maxclients int, reqchan chan poolRequest, statusURL string) {
 	var poolreq poolRequest
 	var totalCount int
 	var nowCount int
@@ -51,7 +51,7 @@ func poolManager(maxclients int, reqchan chan poolRequest) {
 				for key := range pool {
 					if !pool[key].Busy {
 						pool[key].Busy = true
-						if poolreq.req.URL.Path == "/pool-status" {
+						if poolreq.req.URL.Path != "" && poolreq.req.URL.Path == statusURL {
 							pool[key].Method = poolreq.req.Method
 							pool[key].Host = poolreq.req.Host
 							pool[key].Path = poolreq.req.URL.Path
@@ -110,8 +110,8 @@ func (h PoolHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	<-result
 }
 
-func GetPoolHandler(maxclients int, h http.Handler) http.Handler {
+func GetPoolHandler(maxclients int, h http.Handler, statusURL string) http.Handler {
 	reqchan := make(chan poolRequest)
-	go poolManager(maxclients, reqchan)
+	go poolManager(maxclients, reqchan, statusURL)
 	return PoolHandler{h, reqchan}
 }
